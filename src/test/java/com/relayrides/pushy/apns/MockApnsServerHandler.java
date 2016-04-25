@@ -30,6 +30,7 @@ import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.util.AsciiString;
 import io.netty.util.concurrent.PromiseCombiner;
+import scala.util.Random$;
 
 class MockApnsServerHandler extends Http2ConnectionHandler implements Http2FrameListener {
 
