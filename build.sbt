@@ -1,5 +1,7 @@
 scalaVersion := "2.11.8"
 
+javacOptions ++= Seq("-source", "1.7", "-target", "1.7")
+
 val nettyVersion = "4.1.0.CR7"
 
 libraryDependencies ++= (
