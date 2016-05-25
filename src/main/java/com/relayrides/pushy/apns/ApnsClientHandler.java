@@ -56,8 +56,9 @@ import io.netty.util.AsciiString;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.PromiseCombiner;
 import io.netty.util.concurrent.ScheduledFuture;
+import io.netty.util.internal.SystemPropertyUtil;
 
-class ApnsClientHandler<T extends ApnsPushNotification> extends Http2ConnectionHandler {
+public class ApnsClientHandler<T extends ApnsPushNotification> extends Http2ConnectionHandler {
 
     private final AtomicBoolean receivedInitialSettings = new AtomicBoolean(false);
     private long nextStreamId = 1;
@@ -127,7 +128,10 @@ class ApnsClientHandler<T extends ApnsPushNotification> extends Http2ConnectionH
 
         @Override
         public ApnsClientHandler<S> build(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings) {
-            final ApnsClientHandler<S> handler = new ApnsClientHandler<>(decoder, encoder, initialSettings, this.apnsClient(), this.maxUnflushedNotifications());
+            final String key = "pushy.http2.max_concurrent_streams";
+            final int maxConcurrentStreams = SystemPropertyUtil.getInt(key, 1024 * 1024);
+            log.info(key + " = " + maxConcurrentStreams);
+            final ApnsClientHandler<S> handler = new ApnsClientHandler<>(decoder, encoder, initialSettings.maxConcurrentStreams(maxConcurrentStreams), this.apnsClient(), this.maxUnflushedNotifications());
             this.frameListener(handler.new ApnsClientHandlerFrameAdapter());
             return handler;
         }
@@ -212,7 +216,7 @@ class ApnsClientHandler<T extends ApnsPushNotification> extends Http2ConnectionH
         }
     }
 
-    protected ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final ApnsClient<T> apnsClient, final int maxUnflushedNotifications) {
+    public ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final ApnsClient<T> apnsClient, final int maxUnflushedNotifications) {
         super(decoder, encoder, initialSettings);
 
         this.apnsClient = apnsClient;

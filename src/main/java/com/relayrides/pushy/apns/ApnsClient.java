@@ -418,8 +418,31 @@ public class ApnsClient<T extends ApnsPushNotification> {
                                 ApplicationProtocolNames.HTTP_2));
     }
 
-    protected ApnsClient(final SslContext sslContext, final EventLoopGroup eventLoopGroup) {
+    public ApnsClient(final SslContext sslContext, final EventLoopGroup eventLoopGroup) {
+        this(
+            sslContext,
+            eventLoopGroup,
+            new ApnsClientHandlerFactory<T>(){
+                public ApnsClientHandler<T> apply(ApnsClient<T> client){
+                    return new ApnsClientHandler.ApnsClientHandlerBuilder<T>()
+                        .server(false)
+                        .apnsClient(client)
+                        .maxUnflushedNotifications(DEFAULT_MAX_UNFLUSHED_NOTIFICATIONS)
+                        .encoderEnforceMaxConcurrentStreams(true)
+                        .build();
+                }
+            }
+        );
+    }
+
+    public static interface ApnsClientHandlerFactory<A extends ApnsPushNotification> {
+        ApnsClientHandler<A> apply(ApnsClient<A> client);
+    }
+
+    public ApnsClient(final SslContext sslContext, final EventLoopGroup eventLoopGroup, final ApnsClientHandlerFactory<T> factory) {
         this.bootstrap = new Bootstrap();
+
+        final ApnsClientHandler<T> apnsClientHandler = factory.apply(this);
 
         if (eventLoopGroup != null) {
             this.bootstrap.group(eventLoopGroup);
@@ -452,13 +475,6 @@ public class ApnsClient<T extends ApnsPushNotification> {
                     @Override
                     protected void configurePipeline(final ChannelHandlerContext context, final String protocol) {
                         if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
-                            final ApnsClientHandler<T> apnsClientHandler = new ApnsClientHandler.ApnsClientHandlerBuilder<T>()
-                                    .server(false)
-                                    .apnsClient(ApnsClient.this)
-                                    .maxUnflushedNotifications(ApnsClient.this.maxUnflushedNotifications)
-                                    .encoderEnforceMaxConcurrentStreams(true)
-                                    .build();
-
                             synchronized (ApnsClient.this.bootstrap) {
                                 if (ApnsClient.this.gracefulShutdownTimeoutMillis != null) {
                                     apnsClientHandler.gracefulShutdownTimeoutMillis(ApnsClient.this.gracefulShutdownTimeoutMillis);
